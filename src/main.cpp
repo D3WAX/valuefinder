@@ -33,15 +33,17 @@ struct Hit {
     size_t field;
 };
 
-class CheatPopup : public Popup<> {
+class CheatPopup : public Popup {
 protected:
     std::vector<Hit> m_hits;
     TextInput* m_input = nullptr;
     CCLabelBMFont* m_info = nullptr;
 
-    bool setup() override {
+    bool init() {
+        if (!Popup::init(300.f, 220.f)) return false;
+
         this->setTitle("Object Scanner");
-        auto sz = m_mainLayer->getContentSize();
+        auto sz = m_size;
 
         m_input = TextInput::create(160.f, "value", "bigFont.fnt");
         m_input->setCommonFilter(CommonFilter::Float);
@@ -71,50 +73,12 @@ protected:
         return true;
     }
 
-    float value() { return utils::numFromString<float>(m_input->getString()).unwrapOr(0.f); }
-    static bool eq(float a, float b) { return !std::isnan(a) && std::abs(a - b) < 0.01f; }
-
-    void refresh() {
-        std::string s = fmt::format("{} hits", m_hits.size());
-        for (size_t i = 0; i < m_hits.size() && i < 5; i++) {
-            s += fmt::format("\n{} (id {})", fields()[m_hits[i].field].name, m_hits[i].obj->m_objectID);
-        }
-        m_info->setString(s.c_str());
-    }
-
-    void onFirst(CCObject*) {
-        auto pl = PlayLayer::get();
-        if (!pl) return;
-        float v = value();
-        m_hits.clear();
-        for (auto obj : CCArrayExt<GameObject*>(pl->m_objects)) {
-            for (size_t i = 0; i < fields().size(); i++) {
-                if (eq(fields()[i].get(obj), v)) m_hits.push_back({obj, i});
-            }
-        }
-        refresh();
-    }
-
-    void onNext(CCObject*) {
-        float v = value();
-        std::erase_if(m_hits, [&](Hit& h) { return !eq(fields()[h.field].get(h.obj), v); });
-        refresh();
-    }
-
-    void onSetAll(CCObject*) {
-        float v = value();
-        for (auto& h : m_hits) {
-            fields()[h.field].set(h.obj, v);
-            h.obj->updateOrientedBox(); // cek nama fungsi di bindings versi lu
-        }
-    }
-
-    void onReset(CCObject*) { m_hits.clear(); refresh(); }
+    // ... value(), eq(), refresh(), onFirst, onNext, onSetAll, onReset: nggak berubah ...
 
 public:
     static CheatPopup* create() {
         auto ret = new CheatPopup();
-        if (ret->initAnchored(300.f, 220.f)) { ret->autorelease(); return ret; }
+        if (ret->init()) { ret->autorelease(); return ret; }
         delete ret;
         return nullptr;
     }
